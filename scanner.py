@@ -15,8 +15,13 @@ CHAT_ID = os.environ["CHAT_ID"]
 RSI_PERIOD = 14
 RSI_LOWER = 20
 RSI_UPPER = 80
-INTERVAL = "15"  # Bybit'te 15 dakika sadece "15" olarak ifade edilir
+INTERVAL = "15"  # Bybit'te 15 dakika
 BASE_URL = "https://api.bybit.com"
+
+# Cloudflare ve bot engellemelerini aşmak için Tarayıcı Kimliği
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+}
 
 
 def send_telegram(message: str):
@@ -29,24 +34,27 @@ def send_telegram(message: str):
 
 
 def get_futures_symbols():
-    # Bybit V5 API - Linear (USDT Perps) Sembollerini Çeker
     url = f"{BASE_URL}/v5/market/instruments-info"
     params = {"category": "linear"}
     
-    r = requests.get(url, params=params, timeout=15)
-    data = r.json()
+    # headers=HEADERS eklendi
+    r = requests.get(url, params=params, headers=HEADERS, timeout=15)
     
+    try:
+        data = r.json()
+    except requests.exceptions.JSONDecodeError:
+        print(f"Sembolleri çekerken engelleme: HTTP {r.status_code} - {r.text[:100]}")
+        return []
+        
     symbols = []
     if data.get("retCode") == 0:
         for s in data["result"]["list"]:
-            # Sadece USDT paritelerini ve aktif olarak trade edilenleri al
             if s.get("quoteCoin") == "USDT" and s.get("status") == "Trading":
                 symbols.append(s["symbol"])
     return symbols
 
 
 def get_klines(symbol, interval=INTERVAL, limit=100):
-    # Bybit V5 API - Kline (Mum) Verisi Çeker
     url = f"{BASE_URL}/v5/market/kline"
     params = {
         "category": "linear",
@@ -55,16 +63,21 @@ def get_klines(symbol, interval=INTERVAL, limit=100):
         "limit": limit
     }
     
-    r = requests.get(url, params=params, timeout=10)
-    data = r.json()
+    # headers=HEADERS eklendi
+    r = requests.get(url, params=params, headers=HEADERS, timeout=10)
     
-    # Bybit veriyi sondan başa (en yeni en başta) gönderir. 
-    # RSI hesaplaması için eskiden yeniye sıralamamız lazım, bu yüzden ters çeviriyoruz.
+    try:
+        data = r.json()
+    except requests.exceptions.JSONDecodeError:
+        print(f"{symbol} mum verisi çekerken engelleme: HTTP {r.status_code}")
+        return []
+        
+    if data.get("retCode") != 0 or not data.get("result", {}).get("list"):
+        return []
+        
     klines = data["result"]["list"]
     klines.reverse()
     
-    # Bybit kline yapısı: [startTime, open, high, low, close, volume, turnover]
-    # İndeks 4 kapanış fiyatıdır.
     return [float(k[4]) for k in klines]
 
 
@@ -77,13 +90,17 @@ def calculate_rsi(closes, period=RSI_PERIOD):
     avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
-    # [-2] alıyoruz çünkü [-1] henüz kapanmamış olan şu anki aktif mumdur.
     return float(rsi.iloc[-2])
 
 
 def main():
     print(f"[{datetime.utcnow():%Y-%m-%d %H:%M:%S} UTC] Bybit Taraması başlıyor")
     symbols = get_futures_symbols()
+    
+    if not symbols:
+        print("Sembol listesi boş, tarama iptal ediliyor.")
+        return
+        
     print(f"{len(symbols)} sembol taranacak")
 
     oversold, overbought = [], []
@@ -102,7 +119,6 @@ def main():
                 overbought.append((sym, rsi, price))
                 print(f"🔴 {sym}  RSI={rsi:.2f}")
             
-            # Bybit API limitlerine takılmamak için kısa bir bekleme (Saniyede max 120 istek sınırı vardır)
             time.sleep(0.05)
             
         except Exception as e:
