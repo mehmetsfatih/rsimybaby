@@ -1,15 +1,17 @@
 # Binance Futures RSI kapanış bildirimleri
 
+Kurulum deposu: https://github.com/mehmetsfatih/rsimybaby . İş akışı `.github/workflows/scan.yml` dosyasıdır; mevcut `TELEGRAM_TOKEN` ve `CHAT_ID` secret adlarını kullanır.
+
 Tüm aktif **USDT, PERPETUAL, kripto** sözleşmeleri için **15 dakika, Wilder RSI(14), kapanış fiyatı**. Tam olarak `RSI > 90` veya `RSI < 15` ise her uygun mum için sinyal üretir. Art arda uygun kapanışların tümü bildirilir; 90 ve 15 dahil değildir. İşlem açmaz, Binance API anahtarı istemez.
 
 ## Kurulum
 
-1. GitHub'da herkese açık, yeni bir depo oluştur. Bu klasörün içeriğini deponun köküne aktar. Gizli `.github/workflows/rsi.yml` dosyasının da yüklendiğini kontrol et. Klasörün kendisini bir alt klasör olarak yükleme; ZIP'i açmadan depoya yükleme.
+1. GitHub'da herkese açık, yeni bir depo oluştur. Bu klasörün içeriğini deponun köküne aktar. Gizli `.github/workflows/scan.yml` dosyasının da yüklendiğini kontrol et. Klasörün kendisini bir alt klasör olarak yükleme; ZIP'i açmadan depoya yükleme.
 2. Telegram'da doğrulanmış **@BotFather** hesabına `/newbot` gönderip bir bot oluştur. Aldığın token'ı kodlara veya sohbete yapıştırma. Yeni botunun sohbetini açıp `/start` gönder.
 3. Bilgisayarında `python3 telegram_chat_id.py` çalıştır. Token'ı gizli giriş alanına gir; program sohbet kimliğini gösterecek. Bu yardımcı sadece bilgiyi okur, token'ı dosyaya yazmaz.
 4. Depoda **Settings → Secrets and variables → Actions → New repository secret** yolundan iki secret ekle:
-   - `TELEGRAM_BOT_TOKEN`: BotFather'ın verdiği token.
-   - `TELEGRAM_CHAT_ID`: Programın gösterdiği kendi sohbet kimliğin.
+   - `TELEGRAM_TOKEN`: BotFather'ın verdiği token.
+   - `CHAT_ID`: Programın gösterdiği kendi sohbet kimliğin.
 5. **Actions → Binance RSI alerts → Run workflow** ile ilk çalıştırmayı başlat. Workflow dosyası varsayılan dalda bulunmalı. Gerekirse depo/kurum politikalarında Actions'ın depoya yazmasına izin ver; ilerleme kaydı için `contents: write` gerekir.
 6. İlk koşunun yeşil tamamlandığını, `data/state.json` dosyasının oluştuğunu ve Telegram'da kurulum mesajının geldiğini doğrula. Sonraki koşular otomatik tetiklenir. İlk koşu Binance erişiminin GitHub çalıştırıcısında çalışıp çalışmadığının da gerçek testidir.
 
