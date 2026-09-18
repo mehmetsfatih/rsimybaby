@@ -1,0 +1,29 @@
+name: Runner and Binance diagnostic
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/diagnostic.yml
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Confirm runner and public market access
+        run: |
+          python3 - <<'PY'
+          import json
+          from urllib.request import urlopen
+          from urllib.error import HTTPError
+          print("GitHub runner started", flush=True)
+          for path in ["/fapi/v1/time", "/fapi/v1/klines?symbol=BTCUSDT&interval=15m&limit=2"]:
+              try:
+                  with urlopen("https://fapi.binance.com" + path, timeout=20) as response:
+                      data = json.load(response)
+                  print(path, "OK", flush=True)
+              except HTTPError as error:
+                  print("Binance HTTP", error.code, flush=True)
+                  raise SystemExit(1)
+          PY
