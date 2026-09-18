@@ -1,4 +1,4 @@
-name: Runner and Binance diagnostic
+name: Runner and Bybit diagnostic
 on:
   workflow_dispatch:
   push:
@@ -18,12 +18,13 @@ jobs:
           from urllib.request import urlopen
           from urllib.error import HTTPError
           print("GitHub runner started", flush=True)
-          for path in ["/fapi/v1/time", "/fapi/v1/klines?symbol=BTCUSDT&interval=15m&limit=2"]:
+          for path in ["/v5/market/time", "/v5/market/kline?category=linear&symbol=BTCUSDT&interval=15&limit=2"]:
               try:
-                  with urlopen("https://fapi.binance.com" + path, timeout=20) as response:
+                  with urlopen("https://api.bybit.com" + path, timeout=20) as response:
                       data = json.load(response)
+                  assert data["retCode"] == 0, data.get("retMsg")
                   print(path, "OK", flush=True)
               except HTTPError as error:
-                  print("Binance HTTP", error.code, flush=True)
+                  print("Bybit HTTP", error.code, flush=True)
                   raise SystemExit(1)
           PY
